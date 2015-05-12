@@ -12,6 +12,8 @@ import java.text.DateFormatSymbols;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import com.restfb.types.User;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONArray;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -38,6 +40,7 @@ public class FacebookDesign {
         DateFormatSymbols dfs = new DateFormatSymbols();
         String[] alphabeticMonth = dfs.getMonths();
         Date date = new Date();
+        String message;
         int flag = 0;
         try {
             User me = fbClient.fetchObject("me", com.restfb.types.User.class, Parameter.with("fields", "id"));
@@ -68,6 +71,18 @@ public class FacebookDesign {
                         case 0:
                             Post count = fbClient.fetchObject(p.getId(), Post.class, Parameter.with("fields", "likes.summary(true),comments.summary(true)"));
                             UPost post = new UPost(userId, p.getId(), p.getMessage(), postMonth, p.getStatusType(), count.getLikesCount(), count.getCommentsCount());
+                            if (p.getDescription() != null)
+                                message = p.getDescription();
+                            else if (p.getMessage() != null)
+                                message = p.getMessage();
+                            else if (p.getStory() !=null)
+                                message=p.getStory();
+                            else if (p.getStatusType() != null)
+                                message = p.getStatusType();
+                            else if (p.getType() != null)
+                                message = p.getType();
+                            else
+                                message = "Default Message: User did not mention any message";
                             postImageURL = p.getPicture();
                             if(postImageURL == null)
                             {
@@ -77,6 +92,7 @@ public class FacebookDesign {
                             post.setStory(p.getStory());
                             post.setType(p.getType());
                             post.setDescription(p.getDescription());
+                            post.setPostMessage(message);
                             post.setPostYear(postYear);
                             monthPost.add(post);
                             break;
@@ -84,6 +100,18 @@ public class FacebookDesign {
                             monthPost = new ArrayList<UPost> ();
                             Post count1 = fbClient.fetchObject(p.getId(), Post.class, Parameter.with("fields", "likes.summary(true),comments.summary(true)"));
                             UPost post1 = new UPost(userId, p.getId(), p.getMessage(), postMonth, p.getStatusType(), count1.getLikesCount(), count1.getCommentsCount());
+                            if (p.getDescription() != null)
+                                message = p.getDescription();
+                            else if (p.getMessage() != null)
+                                message = p.getMessage();
+                            else if (p.getStory() !=null)
+                                message=p.getStory();
+                            else if (p.getStatusType() != null)
+                                message = p.getStatusType();
+                            else if (p.getType() != null)
+                                message = p.getType();
+                            else
+                                message = "Default Message: User did not mention any message";
                             postImageURL = p.getPicture();
                             if(postImageURL == null)
                             {
@@ -93,6 +121,7 @@ public class FacebookDesign {
                             post1.setStory(p.getStory());
                             post1.setType(p.getType());
                             post1.setDescription(p.getDescription());
+                            post1.setPostMessage(message);
                             post1.setPostYear(postYear);
                             monthPost.add(post1);
                             break;
@@ -132,9 +161,42 @@ public class FacebookDesign {
                     flag = 1;
             }
             highlights.put(key, topPost);
-            repo.save(topPost);
+            //repo.save(topPost);
         }
         return highlights;
+    }
+
+    public JSONArray getHighlight(FacebookClient fbClient) {
+        TreeMap<String, ArrayList<UPost>> highlights = new TreeMap<String, ArrayList<UPost>>();
+        JSONObject picObj = new JSONObject();
+        JSONArray friends = new JSONArray();
+        for (Map.Entry<String, ArrayList<UPost>> entry : getAllPost(fbClient).entrySet()) {
+            String key = entry.getKey();
+            ArrayList<UPost> value = entry.getValue();
+            ArrayList<UPost> topPost = new ArrayList<UPost>();
+            Iterator it = value.iterator();
+            int flag = 0, count = 0;
+            while (flag == 0) {
+                if (it.hasNext()) {
+                    if (count < 5) {
+                        topPost.add((UPost) it.next());
+                        count++;
+                        flag = 0;
+                    } else {
+                        flag = 1;
+                        count = 1;
+                    }
+                } else
+                    flag = 1;
+            }
+            highlights.put(key, topPost);
+            picObj = new JSONObject();
+            picObj.put("Month", key);
+            picObj.put("Post", topPost);
+            friends.add(picObj);
+            //repo.save(topPost);
+        }
+        return friends;
     }
 
     public User  getAbout(FacebookClient fbClient){
@@ -142,18 +204,24 @@ public class FacebookDesign {
         return me;
     }
 
-    public HashMap <String,String> getFriends(FacebookClient fbClient){
-        HashMap <String,String> data = new HashMap <String,String>();
+    public JSONArray getFriends(FacebookClient fbClient){
+        JSONObject picObj = new JSONObject();
+        JSONArray friends = new JSONArray();
         Connection<User> myFriends = fbClient.fetchConnection("me/taggable_friends", User.class, Parameter.with("fields", "id, name,picture"));
+        int i =0;
         do{
             for (User u: myFriends.getData())
             {
-                data.put(u.getName().split(" ")[0],u.getPicture().getUrl());
+                picObj = new JSONObject();
+                picObj.put("name",u.getName().split(" ")[0]);
+                picObj.put("link", u.getPicture().getUrl());
+                friends.add(picObj);
+                i++;
             }
 
             myFriends = fbClient.fetchConnectionPage(myFriends.getNextPageUrl(), User.class);
-        } while (myFriends.hasNext() && data.size() <50);
-        return data;
+        } while (myFriends.hasNext() && i <50);
+        return friends;
     }
 
     public List<UPost> getTopPosts(TreeMap<String, ArrayList<UPost>> allPosts,

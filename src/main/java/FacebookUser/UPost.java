@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class UPost implements Comparable<UPost> {
 
     private String userId;
-    private String postId;
+    public String postId;
 
     private String postMessage = null;   // message field in Fb JSON
     private String postMonth; // created_time field in Fb JSON

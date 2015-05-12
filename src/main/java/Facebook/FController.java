@@ -5,6 +5,7 @@ package Facebook;
         import com.restfb.DefaultWebRequestor;
         import com.restfb.FacebookClient;
         import com.restfb.WebRequestor;
+        import com.restfb.json.JsonArray;
         import org.apache.log4j.Logger;
         import org.springframework.http.HttpStatus;
         import org.springframework.http.ResponseEntity;
@@ -26,6 +27,8 @@ package Facebook;
         import facebookFriendProfiles.FriendProfiles;
         import facebookPostStory.PostStory;
         import  java.util.Map;
+        import org.json.simple.JSONObject;
+        import org.json.simple.JSONArray;
 import java.util.List;
 @RestController
 public class FController {
@@ -43,7 +46,7 @@ public class FController {
     Mail mail = new Mail();
 
     /*--------------------------Welcome Page ---------------------------------*/
-    /*@RequestMapping(value = "welcome.jsp/action", method = RequestMethod.GET)
+    /*@RequestMapping(value = "/action", method = RequestMethod.GET)
     public ResponseEntity fbConnect(@RequestParam(value = "code") String code) throws IOException {
         String redirectUrl = "http://localhost:8080/welcome.jsp/action";
         FacebookClient.AccessToken token = getFacebookUserToken(code, redirectUrl);
@@ -56,11 +59,33 @@ public class FController {
             return new ResponseEntity(allPosts, HttpStatus.OK);
         else
             return new ResponseEntity("There are no Highlights to display currently", HttpStatus.BAD_REQUEST);
-    } */
+    }*/
 
-   public TreeMap<String, ArrayList<UPost>> getResults() {
+
+    public TreeMap<String, ArrayList<UPost>> getResults() {
         FacebookDesign fb = new FacebookDesign();
         return fb.getHighlights(fbClient);
+    }
+    @RequestMapping(value = "/highlights", method = RequestMethod.GET)
+    public JSONArray getResult() {
+        FacebookDesign fb = new FacebookDesign();
+        return fb.getHighlight(fbClient);
+    }
+
+    @RequestMapping(value = "/userName", method = RequestMethod.GET)
+    public String getMyData() {
+        FacebookDesign fb = new FacebookDesign();
+        User me = fb.getAbout(fbClient);
+        String name =   me.getFirstName() + " " +   me.getLastName();
+        return name;
+    }
+
+    @RequestMapping(value = "/profilePic", method = RequestMethod.GET)
+    public String getProfilePic() {
+        FacebookDesign fb = new FacebookDesign();
+        User me = fb.getAbout(fbClient);
+        String profilePicture = "https://graph.facebook.com/" + me.getId() + "/picture?type=large";
+        return profilePicture;
     }
 
     public User getInfo() {
@@ -68,16 +93,30 @@ public class FController {
         return fb.getAbout(fbClient);
     }
 
-    public HashMap<String, String>  getFriends() {
+    @RequestMapping(value = "/userInfo", method = RequestMethod.GET)
+    public JSONObject getInformation() {
         FacebookDesign fb = new FacebookDesign();
-        return fb.getFriends(fbClient) ;
+        User me = fb.getAbout(fbClient);
+        JSONObject userObj = new JSONObject();
+        userObj.put("BirthDate", me.getBirthday());
+        userObj.put("Hometown", me.getHometown().getName());
+        userObj.put("Gender", me.getGender());
+        userObj.put("Interested", me.getInterestedIn().get(0));
+        userObj.put("Relationship", me.getRelationshipStatus());
+        return userObj;
+    }
+
+    @RequestMapping(value = "/friendPics", method = RequestMethod.GET)
+    public JSONArray getFriends() {
+        FacebookDesign fb = new FacebookDesign();
+        return fb.getFriends(fbClient);
     }
 
     public void publishStory(String story, String emailAddress) {
 
         // to post a story to logged in users wall
-        FacebookType publishMessageResponse = postStory.PostOnWall(fbClient, story);
-        mail.sendEmail(emailAddress,story);
+       // FacebookType publishMessageResponse = postStory.PostOnWall(fbClient, story);
+        //mail.sendEmail(emailAddress,story);
         //return publishMessageResponse;
 
     }
