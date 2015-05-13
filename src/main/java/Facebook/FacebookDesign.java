@@ -5,6 +5,7 @@ import com.restfb.Connection;
 import com.restfb.FacebookClient;
 import com.restfb.Parameter;
 import com.restfb.exception.FacebookGraphException;
+import com.restfb.types.Photo;
 import com.restfb.types.Post;
 import com.restfb.types.User;
 
@@ -12,6 +13,7 @@ import java.text.DateFormatSymbols;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import com.restfb.types.User;
+import facebookFriendPhotos.FacebookPhotoFinder;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONArray;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -139,34 +141,7 @@ public class FacebookDesign {
         return posts;
     }
 
-    public TreeMap<String, ArrayList<UPost>> getHighlights(FacebookClient fbClient) {
-        TreeMap<String, ArrayList<UPost>> highlights = new TreeMap<String, ArrayList<UPost>>();
-        for (Map.Entry<String, ArrayList<UPost>> entry : getAllPost(fbClient).entrySet()) {
-            String key = entry.getKey();
-            ArrayList<UPost> value = entry.getValue();
-            ArrayList<UPost> topPost = new ArrayList<UPost>();
-            Iterator it = value.iterator();
-            int flag = 0, count = 0;
-            while (flag == 0) {
-                if (it.hasNext()) {
-                    if (count < 5) {
-                        topPost.add((UPost) it.next());
-                        count++;
-                        flag = 0;
-                    } else {
-                        flag = 1;
-                        count = 1;
-                    }
-                } else
-                    flag = 1;
-            }
-            highlights.put(key, topPost);
-            //repo.save(topPost);
-        }
-        return highlights;
-    }
-
-    public JSONArray getHighlight(FacebookClient fbClient) {
+    public JSONObject getHighlights(FacebookClient fbClient) {
         TreeMap<String, ArrayList<UPost>> highlights = new TreeMap<String, ArrayList<UPost>>();
         JSONObject picObj = new JSONObject();
         JSONArray friends = new JSONArray();
@@ -191,12 +166,23 @@ public class FacebookDesign {
             }
             highlights.put(key, topPost);
             picObj = new JSONObject();
-            picObj.put("Month", key);
+            DateFormatSymbols dfs = new DateFormatSymbols();
+            String[] alphabeticMonth = dfs.getMonths();
+            String str[] = entry.getKey().split("-");
+            int numericMonth = Integer.parseInt(str[1]);
+            if (numericMonth >= 1 && numericMonth <= 12) {
+                str[1]= alphabeticMonth[numericMonth - 1];
+            }
+            picObj.put("Month", str[1] + " " + str[0]);
             picObj.put("Post", topPost);
             friends.add(picObj);
             //repo.save(topPost);
         }
-        return friends;
+        ArrayList<String> pics = getPhotoMoments(highlights,fbClient);
+        picObj = new JSONObject();
+        picObj.put("Posts", friends);
+        picObj.put("Pics", pics);
+        return picObj;
     }
 
     public User  getAbout(FacebookClient fbClient){
@@ -238,6 +224,22 @@ public class FacebookDesign {
 
         return topPosts;
 
+    }
+
+    public ArrayList<String> getPhotoMoments(TreeMap<String, ArrayList<UPost>> allPosts, FacebookClient fbClient) {
+        FacebookPhotoFinder facebookPhotoFinder = new FacebookPhotoFinder();
+        if (!allPosts.isEmpty()) {
+            List<UPost> topPosts = getTopPosts(allPosts, fbClient);
+            List<Photo> photoMoments = facebookPhotoFinder.findPhotoMoments(topPosts, fbClient);
+            ArrayList<String> pics = new ArrayList<String>();
+            for (Photo photo : photoMoments) {
+                pics.add(photo.getPicture());
+                //System.out.println(photo.getPicture());
+            }
+            return pics;
+
+        }
+        return new ArrayList<String>();
     }
 
 }
